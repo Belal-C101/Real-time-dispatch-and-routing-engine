@@ -1,0 +1,213 @@
+// Prisma schema for the Dispatch and Routing Engine
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Terminal {
+  id        String   @id @default(uuid())
+  name      String
+  latitude  Float
+  longitude Float
+  timezone  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tractors  Tractor[]
+  drivers   Driver[]
+  shipments Shipment[]
+  routes    Route[]
+
+  @@index([name])
+}
+
+model Tractor {
+  id        String   @id @default(uuid())
+  terminalId String
+  driverId  String
+  vin       String   @unique
+  make      String
+  model     String
+  year      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  terminal  Terminal @relation(fields: [terminalId], references: [id])
+  driver    Driver   @relation(fields: [driverId], references: [id])
+  routes    Route[]
+
+  @@index([terminalId])
+  @@index([driverId])
+}
+
+model Driver {
+  id               String   @id @default(uuid())
+  name             String
+  employeeId       String   @unique
+  hosStatus        HOSStatus @default(OFF_DUTY)
+  currentCycleHours Float   @default(0)
+  maxCycleHours    Float   @default(70)
+  terminalId       String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  terminal         Terminal @relation(fields: [terminalId], references: [id])
+  tractors         Tractor[]
+  routes           Route[]
+
+  @@index([terminalId])
+  @@index([employeeId])
+}
+
+enum HOSStatus {
+  OFF_DUTY
+  SLEEPER_BERTH
+  DRIVING
+  ON_DUTY
+}
+
+model Shipment {
+  id              String   @id @default(uuid())
+  terminalId      String
+  originAddress   String
+  originLatitude  Float
+  originLongitude Float
+  destAddress     String
+  destLatitude    Float
+  destLongitude   Float
+  pickupStart     DateTime
+  pickupEnd       DateTime
+  deliveryStart   DateTime
+  deliveryEnd     DateTime
+  priority        Priority @default(MEDIUM)
+  serviceTimeMinutes Int
+  weightLbs       Float
+  volumeCubicFt   Float
+  rated           Boolean  @default(false)
+  billingFields   Json     @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  terminal        Terminal @relation(fields: [terminalId], references: [id])
+  stops           Stop[]
+
+  @@index([terminalId])
+  @@index([priority])
+  @@index([pickupStart])
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Stop {
+  id              String   @id @default(uuid())
+  shipmentId      String
+  sequence        Int
+  type            StopType
+  address         String
+  latitude        Float
+  longitude       Float
+  windowStart     DateTime
+  windowEnd       DateTime
+  serviceTimeMinutes Int
+  status          StopStatus @default(PENDING)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  shipment        Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  assignments     Assignment[]
+
+  @@index([shipmentId])
+  @@index([status])
+  @@index([sequence])
+}
+
+enum StopType {
+  PICKUP
+  DELIVERY
+}
+
+enum StopStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Route {
+  id                  String     @id @default(uuid())
+  tractorId           String
+  driverId            String
+  terminalId          String
+  totalDistanceMiles  Float
+  totalDurationMinutes Int
+  estimatedStartTime  DateTime
+  estimatedEndTime    DateTime
+  status              RouteStatus @default(DRAFT)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  tractor             Tractor    @relation(fields: [tractorId], references: [id])
+  driver              Driver     @relation(fields: [driverId], references: [id])
+  terminal            Terminal   @relation(fields: [terminalId], references: [id])
+  stops               Stop[]
+  assignments         Assignment[]
+
+  @@index([tractorId])
+  @@index([driverId])
+  @@index([terminalId])
+  @@index([status])
+}
+
+enum RouteStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  routeId     String
+  stopId      String
+  tractorId   String
+  driverId    String
+  sequence    Int
+  assignedAt  DateTime @default(now())
+  assignedBy  String
+  reasonCode  String
+  createdAt   DateTime @default(now())
+
+  route       Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop        Stop     @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@index([routeId])
+  @@index([stopId])
+  @@index([tractorId])
+  @@index([driverId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  entityType  String
+  entityId    String
+  action      String
+  actor       String
+  timestamp   DateTime @default(now())
+  priorState  Json
+  newState    Json
+  reasonCode  String
+
+  @@index([entityType, entityId])
+  @@index([actor])
+  @@index([timestamp])
+}
