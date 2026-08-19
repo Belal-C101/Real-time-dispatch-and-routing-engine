@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';

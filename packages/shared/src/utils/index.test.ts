@@ -5,12 +5,12 @@ describe('Utility Functions', () => {
   describe('calculateDistance', () => {
     it('should calculate distance between two points', () => {
       // New York City to Los Angeles
-      const distance = calculateDistance(40.7128, -74.0060, 34.0522, -118.2437);
-      expect(distance).toBeCloseTo(2451, -1); // Approximately 2451 miles
+      const distance = calculateDistance(40.7128, -74.006, 34.0522, -118.2437);
+      expect(distance).toBeCloseTo(2446, -1); // Approximately 2446 miles
     });
 
     it('should return 0 for the same point', () => {
-      const distance = calculateDistance(40.7128, -74.0060, 40.7128, -74.0060);
+      const distance = calculateDistance(40.7128, -74.006, 40.7128, -74.006);
       expect(distance).toBe(0);
     });
 

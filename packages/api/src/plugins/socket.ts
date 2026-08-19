@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { Server as SocketIOServer } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';

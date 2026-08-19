@@ -1,5 +1,8 @@
-import { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { Static } from '@sinclair/typebox';
 import { Type } from '@sinclair/typebox';
+import { createAuditLog } from '../utils/audit.js';
+import type { PrismaClient } from '@prisma/client';
 
 const StopResponse = Type.Object({
   id: Type.String({ format: 'uuid' }),
@@ -39,95 +42,212 @@ const CreateStopBody = Type.Object({
 
 const UpdateStopBody = Type.Partial(CreateStopBody);
 
+const GetStopsQuery = Type.Object({
+  shipmentId: Type.Optional(Type.String({ format: 'uuid' })),
+  status: Type.Optional(
+    Type.Union([
+      Type.Literal('PENDING'),
+      Type.Literal('ASSIGNED'),
+      Type.Literal('IN_PROGRESS'),
+      Type.Literal('COMPLETED'),
+      Type.Literal('CANCELLED'),
+    ]),
+  ),
+});
+
+const StopParams = Type.Object({ id: Type.String({ format: 'uuid' }) });
+
+type GetStopsQueryType = Static<typeof GetStopsQuery>;
+type StopParamsType = Static<typeof StopParams>;
+type CreateStopBodyType = Static<typeof CreateStopBody>;
+type UpdateStopBodyType = Static<typeof UpdateStopBody>;
+
+function getActor(request: FastifyRequest): string {
+  return (request.headers['x-actor'] as string) || 'system';
+}
+
+function toPlainObject(obj: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 export const stopRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/', {
-    schema: {
-      querystring: Type.Object({
-        shipmentId: Type.Optional(Type.String({ format: 'uuid' })),
-        status: Type.Optional(Type.Union([
-          Type.Literal('PENDING'),
-          Type.Literal('ASSIGNED'),
-          Type.Literal('IN_PROGRESS'),
-          Type.Literal('COMPLETED'),
-          Type.Literal('CANCELLED'),
-        ])),
-      }),
-      response: { 200: StopsResponse },
+  app.get(
+    '/',
+    {
+      schema: {
+        querystring: GetStopsQuery,
+        response: { 200: StopsResponse },
+      },
     },
-  }, async (request) => {
-    const where: Record<string, unknown> = {};
-    if (request.query.shipmentId) where.shipmentId = request.query.shipmentId;
-    if (request.query.status) where.status = request.query.status;
-    
-    return app.prisma.stop.findMany({
-      where,
-      include: { shipment: true },
-      orderBy: { sequence: 'asc' },
-    });
-  });
+    async (request) => {
+      const query = request.query as GetStopsQueryType;
+      const where: Record<string, unknown> = {};
+      if (query.shipmentId) where.shipmentId = query.shipmentId;
+      if (query.status) where.status = query.status;
 
-  app.get('/:id', {
-    schema: {
-      params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
-      response: { 200: StopResponse, 404: Type.Object({ message: Type.String() }) },
+      return app.prisma.stop.findMany({
+        where,
+        include: { shipment: true },
+        orderBy: { sequence: 'asc' },
+      });
     },
-  }, async (request, reply) => {
-    const stop = await app.prisma.stop.findUnique({
-      where: { id: request.params.id },
-      include: { shipment: true, assignments: true },
-    });
-    if (!stop) {
-      return reply.code(404).send({ message: 'Stop not found' });
-    }
-    return stop;
-  });
+  );
 
-  app.post('/', {
-    schema: {
-      body: CreateStopBody,
-      response: { 201: StopResponse, 400: Type.Object({ message: Type.String() }) },
+  app.get(
+    '/:id',
+    {
+      schema: {
+        params: StopParams,
+        response: {
+          200: StopResponse,
+          404: Type.Object({ message: Type.String() }),
+        },
+      },
     },
-  }, async (request, reply) => {
-    const stop = await app.prisma.stop.create({
-      data: request.body,
-      include: { shipment: true },
-    });
-    app.io.emit('stop:created', stop);
-    return reply.code(201).send(stop);
-  });
+    async (request, reply) => {
+      const params = request.params as StopParamsType;
+      const stop = await app.prisma.stop.findUnique({
+        where: { id: params.id },
+        include: { shipment: true, assignments: true },
+      });
+      if (!stop) {
+        return reply.code(404).send({ message: 'Stop not found' });
+      }
+      return stop;
+    },
+  );
 
-  app.put('/:id', {
-    schema: {
-      params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
-      body: UpdateStopBody,
-      response: { 200: StopResponse, 404: Type.Object({ message: Type.String() }) },
+  app.post(
+    '/',
+    {
+      schema: {
+        body: CreateStopBody,
+        response: {
+          201: StopResponse,
+          400: Type.Object({ message: Type.String() }),
+        },
+      },
     },
-  }, async (request, reply) => {
-    const stop = await app.prisma.stop.update({
-      where: { id: request.params.id },
-      data: request.body,
-      include: { shipment: true },
-    }).catch(() => null);
-    
-    if (!stop) {
-      return reply.code(404).send({ message: 'Stop not found' });
-    }
-    
-    app.io.emit('stop:updated', stop);
-    return stop;
-  });
+    async (request, reply) => {
+      const body = request.body as CreateStopBodyType;
+      const stop = await app.prisma.stop.create({
+        data: body,
+        include: { shipment: true },
+      });
 
-  app.delete('/:id', {
-    schema: {
-      params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
-      response: { 204: Type.Null(), 404: Type.Object({ message: Type.String() }) },
+      // Audit log
+      await createAuditLog(app.prisma as PrismaClient, {
+        entityType: 'Stop',
+        entityId: stop.id,
+        action: 'CREATE',
+        actor: getActor(request),
+        priorState: {},
+        newState: toPlainObject(stop),
+        reasonCode: 'STOP_CREATED',
+      });
+
+      app.io.emit('stop:created', stop);
+      return reply.code(201).send(stop);
     },
-  }, async (request, reply) => {
-    await app.prisma.stop.delete({
-      where: { id: request.params.id },
-    }).catch(() => null);
-    
-    app.io.emit('stop:deleted', { id: request.params.id });
-    return reply.code(204).send();
-  });
+  );
+
+  app.put(
+    '/:id',
+    {
+      schema: {
+        params: StopParams,
+        body: UpdateStopBody,
+        response: {
+          200: StopResponse,
+          404: Type.Object({ message: Type.String() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = request.params as StopParamsType;
+      const body = request.body as UpdateStopBodyType;
+
+      // Get prior state
+      const priorStop = await app.prisma.stop.findUnique({
+        where: { id: params.id },
+        include: { shipment: true },
+      });
+
+      if (!priorStop) {
+        return reply.code(404).send({ message: 'Stop not found' });
+      }
+
+      const stop = await app.prisma.stop
+        .update({
+          where: { id: params.id },
+          data: body,
+          include: { shipment: true },
+        })
+        .catch(() => null);
+
+      if (!stop) {
+        return reply.code(404).send({ message: 'Stop not found' });
+      }
+
+      // Audit log
+      await createAuditLog(app.prisma as PrismaClient, {
+        entityType: 'Stop',
+        entityId: stop.id,
+        action: 'UPDATE',
+        actor: getActor(request),
+        priorState: toPlainObject(priorStop),
+        newState: toPlainObject(stop),
+        reasonCode: 'STOP_UPDATED',
+      });
+
+      app.io.emit('stop:updated', stop);
+      return stop;
+    },
+  );
+
+  app.delete(
+    '/:id',
+    {
+      schema: {
+        params: StopParams,
+        response: {
+          204: Type.Null(),
+          404: Type.Object({ message: Type.String() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const params = request.params as StopParamsType;
+
+      // Get prior state for audit
+      const priorStop = await app.prisma.stop.findUnique({
+        where: { id: params.id },
+        include: { shipment: true },
+      });
+
+      if (!priorStop) {
+        return reply.code(404).send({ message: 'Stop not found' });
+      }
+
+      await app.prisma.stop
+        .delete({
+          where: { id: params.id },
+        })
+        .catch(() => null);
+
+      // Audit log
+      await createAuditLog(app.prisma as PrismaClient, {
+        entityType: 'Stop',
+        entityId: params.id,
+        action: 'DELETE',
+        actor: getActor(request),
+        priorState: toPlainObject(priorStop),
+        newState: {},
+        reasonCode: 'STOP_DELETED',
+      });
+
+      app.io.emit('stop:deleted', { id: params.id });
+      return reply.code(204).send();
+    },
+  );
 };

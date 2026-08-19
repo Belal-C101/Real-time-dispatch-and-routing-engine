@@ -1,10 +1,23 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "composite": true
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@dispatch/shared": ["packages/shared/src/index.ts"],
+      "@dispatch/shared/*": ["packages/shared/src/*"]
+    }
   },
-  "include": ["src/**/*", "tests/**/*", "vitest.config.ts"],
-  "references": [{ "path": "." }]
+  "exclude": ["node_modules", "dist"]
 }

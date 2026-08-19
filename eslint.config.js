@@ -4,16 +4,21 @@ import prettierConfig from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'coverage/**',
+      'packages/**/dist/**',
+      'packages/**/*.js',
+      'packages/**/*.d.ts',
+      '!packages/**/*.test.ts',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
     files: ['**/*.ts'],
-    extends: [
-      tseslint.configs.recommended,
-      prettierConfig,
-    ],
+    extends: [tseslint.configs.recommended, prettierConfig],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [
@@ -30,5 +35,5 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       'no-console': 'off',
     },
-  }
+  },
 );
