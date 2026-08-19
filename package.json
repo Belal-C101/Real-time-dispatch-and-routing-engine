@@ -1,19 +1,23 @@
 {
-  "name": "dispatch-routing-engine",
+  "name": "@dispatch/shared",
   "version": "0.1.0",
   "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "pnpm -r test",
-    "test:watch": "pnpm -r test -- --watch",
-    "test:coverage": "pnpm -r test -- --coverage",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
-    "lint:fix": "pnpm -r lint -- --fix",
-    "build": "pnpm -r build",
-    "dev": "pnpm -r dev",
-    "clean": "pnpm -r clean"
+    "clean": "rm -rf dist",
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
   },
   "devDependencies": {
-    "pnpm": "^8.0.0"
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0",
+    "@types/node": "^20.10.0"
   }
 }

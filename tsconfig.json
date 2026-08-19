@@ -1,31 +1,10 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "Root",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "allowJs": true,
-    "checkJs": "error",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "exactOptionalPropertyTypes": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "useDefineForClassFields": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "rootDir": "./src",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "project": "./tsconfig.json"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "references": [{ "path": "." }]
 }
