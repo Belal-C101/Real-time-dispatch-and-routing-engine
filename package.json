@@ -1,0 +1,19 @@
+{
+  "name": "dispatch-routing-engine",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test -- --watch",
+    "test:coverage": "pnpm -r test -- --coverage",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint -- --fix",
+    "build": "pnpm -r build",
+    "dev": "pnpm -r dev",
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "pnpm": "^8.0.0"
+  }
+}

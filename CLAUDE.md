@@ -25,12 +25,15 @@ Please strictly follow these rules:
 
 # Commands
 
-- Test: <cmd>
-- Typecheck: <cmd>
-- Lint: <cmd>
-- Build: <cmd>
-- Run locally: <cmd>
-- <project-specific: migrate / seed / e2e / codegen>
+- Test: pnpm test
+- Typecheck: pnpm typecheck
+- Lint: pnpm lint
+- Build: pnpm build
+- Run locally: pnpm dev
+- Migrate: pnpm --filter @dispatch/api prisma migrate dev
+- Seed: pnpm --filter @dispatch/api prisma db seed
+- E2E: pnpm --filter @dispatch/api test:e2e
+- Codegen: pnpm --filter @dispatch/api prisma generate
 
 # Workflow
 
